@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Toonies for a Stuffed Animal</title>
+    <style>
+        body {
+            text-align: center;
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 20px;
+        }
+        #game-container {
+            position: relative;
+            width: 500px;
+            height: 300px;
+            margin: 20px auto;
+            border: 2px solid #333;
+            border-radius: 10px;
+            background-color: #fff;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .coin {
+            width: 80px;
+            height: 80px;
+            display: inline-block;
+            margin: 10px;
+            cursor: grab;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            transition: transform 0.2s, opacity 0.3s;
+        }
+        .coin:hover {
+            transform: scale(1.1);
+        }
+        .coin:active {
+            cursor: grabbing;
+        }
+        #purchase-area {
+            width: 600px;
+            height: 300px;
+            position: relative;
+            margin: 10px auto;
+            background-image: url('https://i.imgur.com/gNWPfKy.png'); /* Jar Image */
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+        /* Define the jar area for coins to fall into */
+        #jar-area {
+            position: absolute;
+            width: 280px;
+            height: 120px;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            /* Uncomment for debugging the jar area: */
+            /* border: 2px dashed red; */
+        }
+        #stuffed-animal {
+            width: 600px;
+            height: 600px;
+            position: absolute;
+            bottom: -300px;
+            left: 20%;
+            transform: translateX(-50%);
+            background-image: url('https://i.imgur.com/l9DMC1X.png'); /* Stuffed Animal Image */
+            background-size: contain;
+            background-repeat: no-repeat;
+            display: none;
+        }
+        #score {
+            font-size: 24px;
+            margin-top: 20px;
+            color: #333;
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+            20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+        @keyframes fall {
+            0% { 
+                transform: translateY(-100px) rotate(0deg); 
+                opacity: 1;
+            }
+            100% { 
+                transform: translateY(0) rotate(360deg); 
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Pay $10 using toonies to buy a new stuffed animal!<br>How many toonies do you need?</h1>
+    <div id="game-container">
+        <div id="purchase-area" ondrop="drop(event)" ondragover="allowDrop(event)">
+            <!-- Define a specific area for the jar -->
+            <div id="jar-area"></div>
+        </div>
+        <div id="stuffed-animal"></div>
+    </div>
+    <div>
+        <div id="toonie1" class="coin toonie" draggable="true" ondragstart="drag(event)" 
+             style="background-image: url('https://i.imgur.com/LXqOvcZ.png');">
+        </div>
+        <div id="loonie1" class="coin loonie" draggable="true" ondragstart="drag(event)" 
+             style="background-image: url('https://i.imgur.com/w3FpXpQ.png');">
+        </div>
+        <div id="quarter1" class="coin quarter" draggable="true" ondragstart="drag(event)" 
+             style="background-image: url('https://i.imgur.com/H4mg2f2.png');">
+        </div>
+        <div id="dime1" class="coin dime" draggable="true" ondragstart="drag(event)" 
+             style="background-image: url('https://i.imgur.com/G4OGBLY.png');">
+        </div>
+        <div id="nickel1" class="coin nickel" draggable="true" ondragstart="drag(event)" 
+             style="background-image: url('https://i.imgur.com/y3mMeF3.png');">
+        </div>
+        <div id="penny1" class="coin penny" draggable="true" ondragstart="drag(event)" 
+             style="background-image: url('https://i.imgur.com/OW6bo9l.png');">
+        </div>
+    </div>
+    
+    <div id="score">Total: $0.00</div>
+    
+    <script>
+        let total = 0;
+        const toonieValue = 2.00;
+        const maxTotal = 10.00;
+        
+        // Sound URLs
+        const soundUrls = {
+            drop: 'https://raw.githubusercontent.com/silverflowerrose/coindropfile/main/coin-drop-82392.mp3',
+            gumball: 'https://raw.githubusercontent.com/silverflowerrose/gumball-sound/main/item-pick-up-38258.mp3',
+            wrong: 'https://raw.githubusercontent.com/silverflowerrose/wronganswermp3/main/wrong-answer-sound.mp3'
+        };
+
+        function allowDrop(event) {
+            event.preventDefault();
+        }
+
+        function drag(event) {
+            event.dataTransfer.setData("text", event.target.id);
+        }
+
+        function drop(event) {
+            event.preventDefault();
+            if (total >= maxTotal) return;
+
+            let coinId = event.dataTransfer.getData("text");
+            let coin = document.getElementById(coinId);
+
+            if (coin.classList.contains("toonie")) {
+                total += toonieValue;
+                updateScore();
+                playSound('drop');
+                addCoinToJar();
+                checkPurchase();
+            } else {
+                // Play wrong sound
+                playSound('wrong');
+                
+                // Apply shake animation
+                coin.style.animation = "shake 0.5s";
+                setTimeout(() => {
+                    coin.style.animation = "";
+                }, 500);
+            }
+        }
+
+        function addCoinToJar() {
+            // Create a new coin element
+            const clonedCoin = document.createElement('div');
+            clonedCoin.className = 'coin';
+            clonedCoin.style.backgroundImage = "url('https://i.imgur.com/LXqOvcZ.png')";
+            clonedCoin.style.position = 'absolute';
+            
+            // Set initial position to be above the jar
+            clonedCoin.style.top = '-80px';
+            
+            // Randomly position within the jar's width
+            const jarArea = document.getElementById('jar-area');
+            const jarWidth = jarArea.offsetWidth;
+            const coinWidth = 80;
+            const maxLeft = jarWidth - coinWidth;
+            const randomLeft = Math.random() * maxLeft;
+            clonedCoin.style.left = randomLeft + 'px';
+            
+            // Add the coin to the jar area
+            jarArea.appendChild(clonedCoin);
+            
+            // Create unique animation name
+            const animationName = 'fall-' + Math.floor(Math.random() * 1000);
+            
+            // Apply falling animation
+            clonedCoin.style.animation = 'fall 0.5s forwards';
+            
+            // Apply slight random rotation
+            const rotation = Math.random() * 360;
+            clonedCoin.style.transform = `rotate(${rotation}deg)`;
+            
+            // Scale down the coin slightly to fit better in the jar
+            clonedCoin.style.width = '60px';
+            clonedCoin.style.height = '60px';
+            
+            // Remove draggable attribute
+            clonedCoin.draggable = false;
+        }
+
+        function updateScore() {
+            document.getElementById("score").textContent = `Total: $${total.toFixed(2)}`;
+        }
+
+        function checkPurchase() {
+            if (total >= maxTotal) {
+                document.getElementById("stuffed-animal").style.display = "block";
+                playSound('gumball');
+            }
+        }
+
+        function playSound(type) {
+            console.log(`Attempting to play sound: ${type}`);
+            
+            // Create a new audio element each time
+            const audio = new Audio(soundUrls[type]);
+            
+            // Enable autoplay
+            audio.autoplay = true;
+            
+            // Play the sound
+            const playPromise = audio.play();
+            
+            // Handle potential play() promise rejection
+            if (playPromise !== undefined) {
+                playPromise
+                    .then(() => {
+                        console.log(`${type} sound playing successfully`);
+                    })
+                    .catch(error => {
+                        console.error(`Error playing ${type} sound:`, error);
+                        
+                        // Fallback attempt: Create another audio context approach
+                        try {
+                            const AudioContext = window.AudioContext || window.webkitAudioContext;
+                            const audioCtx = new AudioContext();
+                            
+                            // Fetch the audio file
+                            fetch(soundUrls[type])
+                                .then(response => response.arrayBuffer())
+                                .then(arrayBuffer => audioCtx.decodeAudioData(arrayBuffer))
+                                .then(audioBuffer => {
+                                    const source = audioCtx.createBufferSource();
+                                    source.buffer = audioBuffer;
+                                    source.connect(audioCtx.destination);
+                                    source.start(0);
+                                    console.log(`${type} sound playing via AudioContext`);
+                                })
+                                .catch(err => console.error(`AudioContext fallback failed for ${type}:`, err));
+                        } catch (e) {
+                            console.error("AudioContext fallback also failed:", e);
+                        }
+                    });
+            }
+        }
+    </script>
+</body>
+</html>
